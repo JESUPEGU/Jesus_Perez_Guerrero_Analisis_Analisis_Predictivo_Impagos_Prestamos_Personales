@@ -9,33 +9,43 @@ with open('model_lgbm_op_tuned.pkl', 'rb') as f:
 with open('scaler_op.pkl', 'rb') as f:
     scaler = pickle.load(f)
 
-# Título de la aplicación
 st.title('Predicción de Impagos en Préstamos Personales')
 
-# Estilos adicionales para mejorar la vista
-st.markdown("""
+# Estilo de la app
+st.markdown(
+    """
     <style>
-    .big-font {
-        font-size:40px !important;
-        color: #FF5733;
+    .stNumberInput > div > input {
+        font-size: 16px;
     }
-    .prob-font {
-        font-size:30px !important;
-        color: #2ECC71;
+    .prediction {
+        font-size: 24px;
+        font-weight: bold;
+    }
+    .probability {
+        font-size: 20px;
+        color: yellow;
+    }
+    .positive {
+        color: green;
+    }
+    .negative {
+        color: red;
     }
     </style>
-    """, unsafe_allow_html=True)
+    """, unsafe_allow_html=True
+)
 
-# Entrada de datos del usuario numéricos con valores por defecto
+# Entrada de datos del usuario numéricos
 age = st.number_input('Edad', min_value=0)
 income = st.number_input('Ingreso Anual', min_value=0.0)
 loan_amount = st.number_input('Monto del Préstamo', min_value=0.0)
-credit_score = st.number_input('Puntuación de Crédito', min_value=0, value=500)  # Valor por defecto 500
+credit_score = st.number_input('Puntuación de Crédito', min_value=0, value=500)
 months_employed = st.number_input('Meses Empleados', min_value=0)
 num_credit_lines = st.number_input('Número de Líneas de Crédito', min_value=0)
-interest_rate = st.number_input('Tasa de Interés', min_value=0.0, value=10.0)  # Valor por defecto 10
+interest_rate = st.number_input('Tasa de Interés', min_value=0.0, value=10.0)
 loan_term = st.number_input('Duración del Préstamo (meses)', min_value=0)
-dti_ratio = st.number_input('Relación Deuda-Ingreso (DTI)', min_value=0.0, value=0.5)  # Valor por defecto 0.5
+dti_ratio = st.number_input('Relación Deuda-Ingreso (DTI)', min_value=0.0, value=0.5)
 
 # Entrada de datos del usuario categóricos
 education = st.selectbox('Nivel Educativo', ["Bachillerato", "Universidad", "Master", "Doctorado"])
@@ -45,10 +55,7 @@ has_mortgage = st.selectbox('Tiene Hipoteca', ["Sí", "No"])
 has_dependents = st.selectbox('Tiene Dependientes', ["Sí", "No"])
 loan_purpose = st.selectbox('Finalidad del Préstamo', ["Negocios", "Compra de Vivienda", "Educación", "Compra Automóvil", "Otros"])
 has_co_signer = st.selectbox('Tiene Avalista', ["Sí", "No"])
-
-# Selector para Cluster con valores transformados
-cluster = st.selectbox('Cluster', [1, 2, 3])  # Solo puede elegir entre 1, 2 o 3
-cluster_transformed = cluster - 1  # Transformar el cluster: 1 -> 0, 2 -> 1, 3 -> 2
+cluster = st.selectbox('Cluster', [1, 2, 3], index=1)  # Por defecto elige 2
 
 # Diccionario de mapeo para variables categóricas
 education_mapping = {'Bachillerato': 1, 'Universidad': 2, 'Master': 3, 'Doctorado': 4}
@@ -67,6 +74,9 @@ has_mortgage_num = has_mortgage_mapping[has_mortgage]
 has_dependents_num = has_dependents_mapping[has_dependents]
 loan_purpose_num = loan_purpose_mapping[loan_purpose]
 has_co_signer_num = has_co_signer_mapping[has_co_signer]
+
+# Transformar Cluster (1 -> 0, 2 -> 1, 3 -> 2)
+cluster_transformed = cluster - 1
 
 # Crear nuevas variables derivadas de las originales
 loan_amount_to_income = loan_amount / income if income > 0 else 0
@@ -93,7 +103,7 @@ data = {
     'HasDependents': [has_dependents_num],
     'LoanPurpose': [loan_purpose_num],
     'HasCoSigner': [has_co_signer_num],
-    'Cluster': [cluster_transformed],  # Usamos el valor transformado
+    'Cluster': [cluster_transformed],
     'LoanAmount_to_Income': [loan_amount_to_income],
     'InterestRate_Term': [interest_rate_term],
     'DTIRatio_to_LoanAmount': [dti_ratio_to_loan_amount],
@@ -110,6 +120,14 @@ df_scaled = scaler.transform(df)
 prediction = model.predict(df_scaled)
 prediction_proba = model.predict_proba(df_scaled)
 
-# Mostrar los resultados con estilo mejorado
-st.markdown(f"<div class='big-font'>Predicción: {'Impago' if prediction[0] == 1 else 'No Impago'}</div>", unsafe_allow_html=True)
-st.markdown(f"<div class='prob-font'>Probabilidad de Impago: {prediction_proba[0][1]:.2%}</div>", unsafe_allow_html=True)
+# Mostrar los resultados con colores y formato
+if prediction[0] == 1:
+    prediction_text = 'Impago'
+    prediction_color = 'negative'
+else:
+    prediction_text = 'No Impago'
+    prediction_color = 'positive'
+
+# Mostrar la predicción y la probabilidad con estilo
+st.markdown(f'<div class="prediction {prediction_color}">Predicción: {prediction_text}</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="probability">Probabilidad de Impago: {prediction_proba[0][1]:.2%}</div>', unsafe_allow_html=True)
